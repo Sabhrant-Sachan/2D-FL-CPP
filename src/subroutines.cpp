@@ -1,13 +1,19 @@
 #include "subroutines.hpp"
 
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <cassert>
 #include <cmath>
 #include <limits>
 #include <numbers>
-#include <array>
+#include <numeric>
+#include <stdexcept>
+#include <string>
 #include <tuple>
-#include <cassert>
-#include <bit>
+#include <cstdint>
+#include <fstream>
+#include <filesystem>
 
 namespace subroutines
 {
@@ -313,7 +319,7 @@ namespace subroutines
       const double s1 = dx21 * dy31 - dx31 * dy21;
       const double s2 = dx41 * dy31 - dx31 * dy41;
 
-      for (std::size_t i = 0; i < points.size(); ++i)
+      for (int i = 0; i < points.size(); ++i)
       {
          const double dx = points[i][0] - p1x;
          const double dy = points[i][1] - p1y;
@@ -365,7 +371,7 @@ namespace subroutines
       const double c = 0.5 - 1.0 / static_cast<double>(p);
       const double c2 = 2.0 * beta;
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -417,7 +423,7 @@ namespace subroutines
 
       const double c2s = beta * std::pow(2.0, s);
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -465,7 +471,7 @@ namespace subroutines
       const double c = 0.5 - 1.0 / static_cast<double>(p);
       const double c2s = beta * std::pow(2.0, s);
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -508,7 +514,7 @@ namespace subroutines
 
       const double c = 0.5 - 1.0 / static_cast<double>(p);
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -554,7 +560,7 @@ namespace subroutines
       const double pd = static_cast<double>(p);
       const double c = 0.5 - 1.0 / pd;
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -617,7 +623,7 @@ namespace subroutines
       const double c2 =
           std::pow(2.0, 2.0 * (1.0 - s));
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -639,7 +645,7 @@ namespace subroutines
          const double ell = v_ge ? pe : pd - 1.0;
 
          out[i] = beta * prefactor * std::pow(rho, ell) /
-             (a * a * std::pow(1.0 + r, 3.0 - 2.0 * s));
+                  (a * a * std::pow(1.0 + r, 3.0 - 2.0 * s));
       }
    }
 
@@ -653,7 +659,7 @@ namespace subroutines
    }
 
    void qw2func(
-       std::vector<double> &out, int p, 
+       std::vector<double> &out, int p,
        const std::vector<double> &t,
        double s, double alpha, double beta, double gamma)
    {
@@ -669,7 +675,7 @@ namespace subroutines
       const double c2 = std::pow(2.0, s);
       const double c1 = c2 * 3.0 * (pd - 2.0) / 2.0;
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i] + gamma;
          const double tp = 1.0 + tau;
@@ -722,7 +728,7 @@ namespace subroutines
       const double c2 = std::pow(2.0, 1.0 - s);
       const double c1 = c2 * 3.0 * (pd - 2.0) / 2.0;
 
-      for (std::size_t i = 0; i < t.size(); ++i)
+      for (int i = 0; i < t.size(); ++i)
       {
          const double tau = alpha * t[i];
          const double tp = 1.0 + tau;
@@ -806,7 +812,7 @@ namespace subroutines
 
       if (p == 2)
       {
-         for (std::size_t i = 0; i < x.size(); ++i)
+         for (int i = 0; i < x.size(); ++i)
          {
             assert(x[i] >= 0.0 && x[i] <= 2.0);
 
@@ -825,7 +831,7 @@ namespace subroutines
       const double invDen = 1.0 - 2.0 / pd;
       const double P3 = std::pow(P / 3.0, 3);
 
-      for (std::size_t i = 0; i < x.size(); ++i)
+      for (int i = 0; i < x.size(); ++i)
       {
          assert(x[i] >= 0.0 && x[i] <= 2.0);
 
@@ -868,7 +874,7 @@ namespace subroutines
 
       const std::size_t n = xs.size();
 
-      for (std::size_t m = 1; m < n; ++m)
+      for (int m = 1; m < n; ++m)
       {
          for (std::size_t j = n - 1; j >= m; --j)
          {
@@ -876,7 +882,7 @@ namespace subroutines
                 (x - xs[j - m]) * fs[j] -
                 (x - xs[j]) * fs[j - 1];
 
-            const double denominator =  xs[j] - xs[j - m];
+            const double denominator = xs[j] - xs[j - m];
 
             fs[j] = numerator / denominator;
 
@@ -902,7 +908,7 @@ namespace subroutines
        int N, double x)
    {
       assert(N >= 1);
-      assert(out.size() >= static_cast<std::size_t>(N));
+      assert(out.size() >= N);
 
       out[0] = 1.0;
 
@@ -916,45 +922,42 @@ namespace subroutines
    }
 
    void ChebyTN(
-       Eigen::MatrixXd &out,
+       std::vector<double> &out,
        int N, const std::vector<double> &x)
    {
       assert(N >= 1);
-      const Eigen::Index rows = static_cast<Eigen::Index>(x.size());
-      assert(out.rows() == rows);
-      assert(out.cols() == N);
+      assert(out.size() == x.size() * N);
 
-      out.col(0).setOnes();
-
-      if (N >= 2)
+      for (int i = 0; i < x.size(); ++i)
       {
-         for (std::size_t i = 0; i < x.size(); ++i)
-            out(static_cast<Eigen::Index>(i), 1) = x[i];
+         const int rowStart = i * N;
 
-         for (int n = 2; n < N; ++n)
+         out[rowStart] = 1.0;
+
+         if (N >= 2)
          {
-            for (std::size_t i = 0; i < x.size(); ++i)
-            {
-               const Eigen::Index row =
-                   static_cast<Eigen::Index>(i);
+            out[rowStart + 1] = x[i];
 
-               out(row, n) =
-                   2.0 * x[i] * out(row, n - 1) -
-                   out(row, n - 2);
+            for (int n = 2; n < N; ++n)
+            {
+               const int col = n;
+
+               out[rowStart + col] = 2.0 * x[i] * out[rowStart + col - 1] -
+                   out[rowStart + col - 2];
             }
          }
       }
    }
 
-   Eigen::MatrixXd ChebyTN(
+   std::vector<double> ChebyTN(
        int N, const std::vector<double> &x)
    {
       assert(N >= 1);
 
-      Eigen::MatrixXd out(
-          static_cast<Eigen::Index>(x.size()), N);
+      std::vector<double> out(x.size() * N);
 
       ChebyTN(out, N, x);
+
       return out;
    }
 
@@ -1005,7 +1008,7 @@ namespace subroutines
 
       if (n == 2)
       {
-         for (std::size_t i = 0; i < X.size(); ++i)
+         for (int i = 0; i < X.size(); ++i)
             out[i] = std::fma(2.0 * X[i], X[i], -1.0);
 
          return;
@@ -1015,7 +1018,7 @@ namespace subroutines
       const int msb =
           31 - static_cast<int>(std::countl_zero(u));
 
-      for (std::size_t i = 0; i < X.size(); ++i)
+      for (int i = 0; i < X.size(); ++i)
       {
          const double x = X[i];
 
@@ -1080,6 +1083,263 @@ namespace subroutines
       const double qy = p1y + t * ey;
 
       return std::hypot(px - qx, py - qy);
+   }
+
+   std::tuple<double, double> GSS(
+       const std::function<double(double)> &f,
+       double a, double b, double tol)
+   {
+      constexpr double tau = 0.6180339887498948482;
+      constexpr double rho = 1.0 - tau;
+
+      const double h = b - a;
+
+      double x1 = a + rho * h;
+      double x2 = a + tau * h;
+      double f1 = f(x1);
+      double f2 = f(x2);
+
+      double L = tau;
+      int iter = 0;
+
+      while ((b - a) > tol && iter < 128)
+      {
+         if (f1 > f2)
+         {
+            a = x1;
+            x1 = x2;
+            f1 = f2;
+
+            x2 = a + tau * L * h;
+            f2 = f(x2);
+         }
+         else
+         {
+            b = x2;
+            x2 = x1;
+            f2 = f1;
+
+            x1 = a + rho * L * h;
+            f1 = f(x1);
+         }
+
+         L *= tau;
+         ++iter;
+      }
+
+      if (f1 <= f2)
+         return {f1, x1};
+
+      return {f2, x2};
+   }
+
+   double Bis(
+       const std::function<double(double)> &f,
+       double a, double b, int maxi, double tol)
+   {
+      double left = a;
+      double right = b;
+
+      double fL = f(left);
+      const double fR = f(right);
+
+      if (!std::isfinite(fL) || !std::isfinite(fR))
+      {
+         throw std::runtime_error("Bis: endpoint function value is Inf or NaN");
+      }
+
+      if (std::abs(fL) < tol)
+         return left;
+
+      if (std::abs(fR) < tol)
+         return right;
+
+      if ((fL < 0.0 && fR < 0.0) || (fL > 0.0 && fR > 0.0))
+      {
+         throw std::invalid_argument("Bis: interval does not bracket a root");
+      }
+
+      for (int iter = 0; iter < maxi; ++iter)
+      {
+         const double mid = std::midpoint(left, right);
+         const double fM = f(mid);
+
+         if (!std::isfinite(fM))
+         {
+            throw std::runtime_error("Bis: function value became Inf or NaN");
+         }
+
+         if (std::abs(fM) < tol)
+            return mid;
+
+         if ((fL < 0.0 && fM > 0.0) || (fL > 0.0 && fM < 0.0))
+         {
+            right = mid;
+         }
+         else
+         {
+            left = mid;
+            fL = fM;
+         }
+      }
+
+      return std::midpoint(left, right);
+   }
+
+   double newtonR1D(
+       const std::function<double(double)> &f,
+       const std::function<double(double)> &df,
+       double x0, int maxi, double tol)
+   {
+      double x = x0;
+
+      for (int iter = 0; iter < maxi; ++iter)
+      {
+         const double fx = f(x);
+
+         if (!std::isfinite(fx))
+         {
+            throw std::runtime_error("newtonR1D: function value became Inf or NaN");
+         }
+
+         if (std::abs(fx) < tol)
+            return x;
+
+         const double dfx = df(x);
+
+         if (!std::isfinite(dfx) ||
+             std::abs(dfx) <= 1.0e-16)
+         {
+            throw std::runtime_error("newtonR1D: derivative is zero or non-finite at x = " +
+                                     std::to_string(x));
+         }
+
+         x -= fx / dfx;
+
+         if (!std::isfinite(x))
+         {
+            throw std::runtime_error("newtonR1D: iterate became Inf or NaN");
+         }
+      }
+
+      return x;
+   }
+
+   std::tuple<double, double> newtonR2D(
+       const std::function<double(double, double)> &f1,
+       const std::function<double(double, double)> &f2,
+       const std::function<
+           std::tuple<double, double, double, double>(double, double)> &J,
+       double t0, double s0, int maxi, double tol)
+   {
+      double t = t0;
+      double s = s0;
+
+      for (int iter = 0; iter < maxi; ++iter)
+      {
+         const double F1 = f1(t, s);
+         const double F2 = f2(t, s);
+
+         const auto [J11, J12, J21, J22] = J(t, s);
+
+         const double detJ = J11 * J22 - J12 * J21;
+
+         if (!std::isfinite(detJ) ||
+             std::abs(detJ) <= 1.0e-16)
+         {
+            return {NaN, NaN};
+         }
+
+         const double dt =
+             (-F1 * J22 + F2 * J12) / detJ;
+
+         const double ds =
+             (-F2 * J11 + F1 * J21) / detJ;
+
+         t += dt;
+         s += ds;
+
+         if (!std::isfinite(t) || !std::isfinite(s))
+            return {NaN, NaN};
+
+         if (std::max(std::abs(dt), std::abs(ds)) < tol)
+            return {t, s};
+      }
+
+      return {NaN, NaN};
+   }
+
+   std::vector<double> getF1W(int n, const std::filesystem::path &file)
+   {
+      if (n < 1)
+         throw std::invalid_argument("getF1W: n must be at least 1");
+
+      const int offsetBytes = n * (n - 1) * sizeof(double) / 2;
+
+      std::ifstream input;
+      input.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+      input.open(file, std::ios::binary);
+      input.seekg(offsetBytes, std::ios::beg);
+
+      std::vector<double> weights(n);
+
+      input.read(reinterpret_cast<char *>(weights.data()), n * sizeof(double));
+
+      return weights;
+   }
+
+   std::vector<double> fejer1w(int n)
+   {
+      if (n < 1) throw std::invalid_argument("fejer1w: n must be at least 1");
+      
+      std::vector<double> weights(n);
+
+      const int m = (n - 1) / 2;
+      const double nd = static_cast<double>(n);
+
+      for (int k = 1; k <= n; ++k)
+      {
+         double sum = 0.0;
+
+         const double kd = static_cast<double>(k);
+
+         const double k_factor = (2.0 * kd - 1.0) / nd;
+
+         for (int j = 1; j <= m; ++j)
+         {
+            const double jd = static_cast<double>(j);
+
+            sum += std::cos(std::numbers::pi * jd * k_factor) / (4.0 * jd * jd - 1.0);
+         }
+
+         weights[k - 1] = 2.0 * (1.0 - 2.0 * sum) / nd;
+      }
+
+      return weights;
+   }
+
+   void makeF1W(int N, const std::filesystem::path &file)
+   {
+      if (N < 1) throw std::invalid_argument("makeF1W: N must be at least 1");
+      
+      std::ofstream output(file, std::ios::binary | std::ios::trunc);
+
+      if (!output)
+      {
+         throw std::runtime_error( "makeF1W: could not open file " + file.string());
+      }
+
+      for (int n = 1; n <= N; ++n)
+      {
+         const std::vector<double> weights = fejer1w(n);
+
+         output.write(
+             reinterpret_cast<const char *>(weights.data()),
+             weights.size() * sizeof(double));
+
+         if (!output) throw std::runtime_error("makeF1W: failed while writing file");
+      }
    }
 
 } // namespace subroutines

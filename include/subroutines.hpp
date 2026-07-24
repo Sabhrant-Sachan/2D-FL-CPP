@@ -1,14 +1,10 @@
 #pragma once
 
-#include <Eigen/Dense>
+#include <filesystem>
 #include <array>
+#include <functional>
 #include <tuple>
 #include <vector>
-#include <numeric>
-
-#include <cmath>
-#include <stdexcept>
-#include <string>
 
 namespace subroutines
 {
@@ -237,11 +233,12 @@ namespace subroutines
    void ChebyTN(std::vector<double> &out, int N, double x);
 
    // Chebyshev polynomials T0,...,T(N-1) for multiple x values.
-   void ChebyTN(Eigen::MatrixXd &out, int N, const std::vector<double> &x);
+   // The result represents a row-major matrix with x.size() rows
+   // and N columns. Entry (i,n) is stored at out[i*N + n].
+   void ChebyTN(std::vector<double>& out, int N, const std::vector<double>& x);
 
-   // Allocating multiple-point overload.
-   // Rows correspond to x values and columns to T0,...,T(N-1).
-   Eigen::MatrixXd ChebyTN(int N, const std::vector<double> &x);
+   // Allocating multiple-point overload. 
+   std::vector<double> ChebyTN(int N, const std::vector<double>& x);
 
    // Scalar Chebyshev polynomial T_n(x).
    double ChebyT(int n, double x);
@@ -256,130 +253,38 @@ namespace subroutines
    double dlineseg2D(double px, double py,
                      double p1x, double p1y, double p2x, double p2y);
 
-   // Golden-section search for the minimum of f on [a,b].
-   // Returns {minimum function value, minimizer}.
-   template <class F>
    std::tuple<double, double> GSS(
-       F &&f, double a, double b, double tol)
-   {
-      constexpr double tau = 0.6180339887498948482;
-      constexpr double rho = 1.0 - tau;
+       const std::function<double(double)> &f,
+       double a, double b, double tol);
 
-      const double h = b - a;
-
-      double x1 = a + rho * h;
-      double x2 = a + tau * h;
-      double f1 = f(x1);
-      double f2 = f(x2);
-
-      double L = tau;
-      int iter = 0;
-
-      while ((b - a) > tol && iter < 128)
-      {
-         if (f1 > f2)
-         {
-            a = x1;
-            x1 = x2;
-            f1 = f2;
-
-            x2 = a + tau * L * h;
-            f2 = f(x2);
-         }
-         else
-         {
-            b = x2;
-            x2 = x1;
-            f2 = f1;
-
-            x1 = a + rho * L * h;
-            f1 = f(x1);
-         }
-
-         L *= tau;
-         ++iter;
-      }
-
-      return f1 <= f2
-                 ? std::tuple<double, double>{f1, x1}
-                 : std::tuple<double, double>{f2, x2};
-   }
-
-   // Bisection method for a root of f on [a,b].
-   // The interval should bracket a root.
-   template <class F>
    double Bis(
-       F &&f, double a, double b, int maxi, double tol = 1.0e-14)
-   {
-      double left = a;
-      double right = b;
-      double fL = f(left);
-      double fR = f(right);
+       const std::function<double(double)> &f,
+       double a, double b, int maxi, double tol = 1.0e-14);
 
-      if (std::abs(fL) < tol)
-         return left;
-
-      if (std::abs(fR) < tol)
-         return right;
-
-      for (int iter = 0; iter < maxi; ++iter)
-      {
-         const double mid = std::midpoint(left, right);
-         const double fM = f(mid);
-
-         if (std::abs(fM) < tol)
-            return mid;
-
-         if ((fL < 0.0 && fM > 0.0) || (fL > 0.0 && fM < 0.0))
-         {
-            right = mid;
-            fR = fM;
-         }
-         else
-         {
-            left = mid;
-            fL = fM;
-         }
-      }
-
-      return std::midpoint(left, right);
-   }
-
-   // Newton's method for a scalar root of f.
-   // Throws std::runtime_error if the derivative or iterate becomes invalid.
-   template <class F, class DF>
    double newtonR1D(
-       F &&f, DF &&df,
-       double x0, int maxi,
-       double tol = 1.0e-15)
-   {
-      double x = x0;
+       const std::function<double(double)> &f,
+       const std::function<double(double)> &df,
+       double x0, int maxi, double tol = 1.0e-15);
 
-      for (int iter = 0; iter < maxi; ++iter)
-      {
-         const double fx = f(x);
+   // Newton's method for a system of two nonlinear equations.
+   // J(t,s) returns the Jacobian entries {J11, J12, J21, J22}.
+   // Returns {t,s} on convergence.
+   // Returns {NaN,NaN} if the Jacobian is singular, an iterate becomes
+   // non-finite, or the maximum iteration count is reached.
+   std::tuple<double, double> newtonR2D(
+       const std::function<double(double, double)> &f1,
+       const std::function<double(double, double)> &f2,
+       const std::function<
+           std::tuple<double, double, double, double>(double, double)> &J,
+       double t0, double s0, int maxi, double tol = 1.0e-14);
 
-         if (std::abs(fx) < tol)
-            return x;
+   // Read the packed Fejer-1 weights for order n from a binary file.
+   std::vector<double> getF1W(
+       int n, const std::filesystem::path &file = "F1W.bin");
 
-         const double dfx = df(x);
+   // Compute Fejer type-1 quadrature weights on [-1,1].
+   std::vector<double> fejer1w(int n);
 
-         if (!std::isfinite(dfx) || std::abs(dfx) <= 1.0e-16)
-         {
-            throw std::runtime_error(
-                "newtonR1D: derivative is zero or non-finite at x = " +
-                std::to_string(x));
-         }
-
-         x -= fx / dfx;
-
-         if (!std::isfinite(x))
-         {
-            throw std::runtime_error(
-                "newtonR1D: iterate became Inf or NaN");
-         }
-      }
-
-      return x;
-   }
+   // Write packed Fejer-1 weights for n=1,...,N.
+   void makeF1W(int N = 2048, const std::filesystem::path &file = "F1W.bin");
 }

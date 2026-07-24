@@ -1,12 +1,17 @@
 #include "subroutines.hpp"
 
-#include <Eigen/Dense>
+#include <filesystem>
+
+#include <mkl_cblas.h>
+#include <numeric>
 #include <array>
 #include <cmath>
 #include <iostream>
 #include <numbers>
 #include <string>
 #include <vector>
+#include <limits>
+#include <tuple>
 
 namespace
 {
@@ -28,13 +33,13 @@ namespace
         }
     }
 
-    template <std::size_t N>
+    template <int N>
     bool array_approx(
         const std::array<double, N> &a,
         const std::array<double, N> &b,
         double tol = 1.0e-12)
     {
-        for (std::size_t i = 0; i < N; ++i)
+        for (int i = 0; i < N; ++i)
             if (!approx(a[i], b[i], tol))
                 return false;
 
@@ -45,6 +50,7 @@ namespace
 int main()
 {
     using namespace subroutines;
+
     constexpr double pi = std::numbers::pi;
 
     // ------------------------------------------------------------
@@ -374,7 +380,7 @@ int main()
             wsfunc(4, 3, 2, t);
 
         bool same = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
             same = same && approx(mutating[i], allocating[i]);
 
         check(same,
@@ -403,7 +409,7 @@ int main()
         const std::vector<double> real = wsfunc(4, 1.5, t);
 
         bool same = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
             same = same && approx(rational[i], real[i]);
 
         check(same,
@@ -417,9 +423,8 @@ int main()
         const std::vector<double> ws = wsfunc(4, 2.0, t);
 
         bool correct_power = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
-            correct_power =
-                correct_power && approx(ws[i], w[i] * w[i]);
+        for (int i = 0; i < t.size(); ++i)
+            correct_power = correct_power && approx(ws[i], w[i] * w[i]);
 
         check(correct_power,
               "wsfunc real: equals wfunc raised to s");
@@ -456,7 +461,7 @@ int main()
         const std::vector<double> allocating = dwfunc(4, t);
 
         bool same = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
             same = same && approx(mutating[i], allocating[i]);
 
         check(same, "dwfunc: mutating and allocating agree");
@@ -494,7 +499,7 @@ int main()
         const std::vector<double> allocating = ddwfunc(4, t);
 
         bool same = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
             same = same && approx(mutating[i], allocating[i]);
 
         check(same, "ddwfunc: mutating and allocating agree");
@@ -536,7 +541,7 @@ int main()
         bool same2 = true;
         bool same3 = true;
 
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
         {
             same1 = same1 && approx(q1_mut[i], q1[i]);
             same2 = same2 && approx(q2_mut[i], q2[i]);
@@ -560,7 +565,7 @@ int main()
         bool correct2 = true;
         bool correct3 = true;
 
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
         {
             const std::vector<double> positive{t[i]};
             const std::vector<double> negative{-t[i]};
@@ -594,16 +599,16 @@ int main()
     {
         check(
             approx(winv(4, 0.0), -1.0) &&
-            approx(winv(4, 1.0), 0.0) &&
-            approx(winv(4, 2.0), 1.0),
+                approx(winv(4, 1.0), 0.0) &&
+                approx(winv(4, 2.0), 1.0),
             "winv: endpoint and midpoint identities");
     }
 
     {
         check(
             approx(winv(2, 0.0), -1.0) &&
-            approx(winv(2, 1.0), 0.0) &&
-            approx(winv(2, 2.0), 1.0),
+                approx(winv(2, 1.0), 0.0) &&
+                approx(winv(2, 2.0), 1.0),
             "winv: p=2 closed form");
     }
 
@@ -616,7 +621,7 @@ int main()
         const std::vector<double> recovered = winv(p, x);
 
         bool correct = true;
-        for (std::size_t i = 0; i < t.size(); ++i)
+        for (int i = 0; i < t.size(); ++i)
             correct = correct && approx(recovered[i], t[i], 1.0e-11);
 
         check(correct, "winv: inverse of wfunc");
@@ -632,7 +637,7 @@ int main()
         const std::vector<double> allocating = winv(p, x);
 
         bool same = true;
-        for (std::size_t i = 0; i < x.size(); ++i)
+        for (int i = 0; i < x.size(); ++i)
             same = same && approx(mutating[i], allocating[i]);
 
         check(same, "winv: mutating and allocating agree");
@@ -646,7 +651,7 @@ int main()
 
         for (double xi : x)
             symmetric = symmetric &&
-            approx(winv(p, xi), -winv(p, 2.0 - xi));
+                        approx(winv(p, xi), -winv(p, 2.0 - xi));
 
         check(symmetric, "winv: symmetry");
     }
@@ -709,7 +714,7 @@ int main()
             1.0, -1.0, 1.0, -1.0, 1.0, -1.0};
 
         bool correct = true;
-        for (std::size_t i = 0; i < out.size(); ++i)
+        for (int i = 0; i < out.size(); ++i)
             correct = correct && approx(out[i], expected[i]);
 
         check(correct, "ChebyTN scalar: x=-1");
@@ -723,37 +728,51 @@ int main()
             1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0};
 
         bool correct = true;
-        for (std::size_t i = 0; i < out.size(); ++i)
+        for (int i = 0; i < out.size(); ++i)
             correct = correct && approx(out[i], expected[i]);
 
         check(correct, "ChebyTN scalar: x=0");
     }
+
+    const auto at = [](const std::vector<double> &matrix,
+                       int row,
+                       int col,
+                       int columnCount)
+    {
+        return matrix[row * columnCount + col];
+    };
     // ------------------------------------------------------------
-    // ChebyTN: Eigen matrix output
+    // ChebyTN: flat row-major matrix output
     // ------------------------------------------------------------
     {
         const std::vector<double> x{-1.0, 0.0, 1.0};
         constexpr int N = 6;
 
-        const Eigen::MatrixXd out = ChebyTN(N, x);
+        const std::vector<double> out = ChebyTN(N, x);
 
         bool correct = true;
 
         for (int n = 0; n < N; ++n)
         {
-            correct = correct &&
-                      approx(out(0, n), n % 2 == 0 ? 1.0 : -1.0);
+
+            correct =
+                correct &&
+                approx(
+                    at(out, 0, n, N),
+                    n % 2 == 0 ? 1.0 : -1.0);
 
             const double zeroExpected =
                 n % 2 == 0
                     ? (n % 4 == 0 ? 1.0 : -1.0)
                     : 0.0;
 
-            correct = correct &&
-                      approx(out(1, n), zeroExpected);
+            correct =
+                correct &&
+                approx(at(out, 1, n, N), zeroExpected);
 
-            correct = correct &&
-                      approx(out(2, n), 1.0);
+            correct =
+                correct &&
+                approx(at(out, 2, n, N), 1.0);
         }
 
         check(correct, "ChebyTN matrix: x=-1,0,1");
@@ -763,15 +782,22 @@ int main()
         const std::vector<double> x{-0.75, 0.0, 0.4, 1.0};
         constexpr int N = 8;
 
-        Eigen::MatrixXd mutating(
-            static_cast<Eigen::Index>(x.size()), N);
-
+        std::vector<double> mutating(x.size() * N);
         ChebyTN(mutating, N, x);
 
-        const Eigen::MatrixXd allocating = ChebyTN(N, x);
+        const std::vector<double> allocating = ChebyTN(N, x);
+
+        bool agree = true;
+
+        for (int i = 0; i < mutating.size(); ++i)
+        {
+            agree =
+                agree &&
+                approx(mutating[i], allocating[i], 1.0e-12);
+        }
 
         check(
-            mutating.isApprox(allocating, 1.0e-12),
+            agree,
             "ChebyTN matrix: mutating and allocating agree");
     }
 
@@ -779,22 +805,23 @@ int main()
         const std::vector<double> x{-0.8, -0.2, 0.3, 0.9};
         constexpr int N = 10;
 
-        const Eigen::MatrixXd matrix = ChebyTN(N, x);
+        const std::vector<double> matrix = ChebyTN(N, x);
 
         bool agreesWithScalar = true;
 
-        for (std::size_t i = 0; i < x.size(); ++i)
+        for (int i = 0; i < x.size(); ++i)
         {
             std::vector<double> scalarRow(N);
             ChebyTN(scalarRow, N, x[i]);
 
             for (int n = 0; n < N; ++n)
             {
+
                 agreesWithScalar =
                     agreesWithScalar &&
                     approx(
-                        matrix(static_cast<Eigen::Index>(i), n),
-                        scalarRow[static_cast<std::size_t>(n)]);
+                        at(matrix, i, n, N),
+                        scalarRow[n]);
             }
         }
 
@@ -802,6 +829,65 @@ int main()
             agreesWithScalar,
             "ChebyTN matrix: rows agree with scalar version");
     }
+    // ------------------------------------------------------------
+    // ChebyTN: MKL matrix-vector multiplication
+    // ------------------------------------------------------------
+    {
+        const std::vector<double> x{-1.0, -0.5, 0.0, 0.5, 1.0};
+        constexpr int N = 3;
+
+        const std::vector<double> matrix = ChebyTN(N, x);
+
+        // p(x) = 2*T0(x) + 3*T1(x) - T2(x)
+        const std::vector<double> coefficients{
+            2.0,
+            3.0,
+            -1.0};
+
+        std::vector<double> result(x.size(), 0.0);
+
+        const MKL_INT rows =
+            static_cast<MKL_INT>(x.size());
+
+        const MKL_INT columns =
+            static_cast<MKL_INT>(N);
+
+        cblas_dgemv(
+            CblasRowMajor,
+            CblasNoTrans,
+            rows,
+            columns,
+            1.0,
+            matrix.data(),
+            columns,
+            coefficients.data(),
+            1,
+            0.0,
+            result.data(),
+            1);
+
+        bool correct = true;
+
+        for (int i = 0; i < x.size(); ++i)
+        {
+            // T0(x) = 1
+            // T1(x) = x
+            // T2(x) = 2*x*x - 1
+            const double expected =
+                2.0 +
+                3.0 * x[i] -
+                (2.0 * x[i] * x[i] - 1.0);
+
+            correct =
+                correct &&
+                approx(result[i], expected, 1.0e-12);
+        }
+
+        check(
+            correct,
+            "ChebyTN matrix: MKL matrix-vector multiplication");
+    }
+
     // ------------------------------------------------------------
     // ChebyT: scalar
     // ------------------------------------------------------------
@@ -871,8 +957,8 @@ int main()
 
         check(
             approx(out[0], -1.0) &&
-            approx(out[1], 0.0) &&
-            approx(out[2], 1.0),
+                approx(out[1], 0.0) &&
+                approx(out[2], 1.0),
             "ChebyT vector: exact values at -1,0,1");
     }
 
@@ -886,11 +972,11 @@ int main()
 
         bool agreesWithScalar = true;
 
-        for (std::size_t i = 0; i < X.size(); ++i)
+        for (int i = 0; i < X.size(); ++i)
         {
             agreesWithScalar =
-            agreesWithScalar &&
-            approx(out[i], ChebyT(n, X[i]), 1.0e-12);
+                agreesWithScalar &&
+                approx(out[i], ChebyT(n, X[i]), 1.0e-12);
         }
 
         check(
@@ -909,7 +995,7 @@ int main()
 
         bool same = true;
 
-        for (std::size_t i = 0; i < X.size(); ++i)
+        for (int i = 0; i < X.size(); ++i)
             same = same && approx(mutating[i], allocating[i]);
 
         check(
@@ -921,16 +1007,16 @@ int main()
         const std::vector<double> X{-0.9, -0.2, 0.4, 0.85};
         constexpr int N = 15;
 
-        const Eigen::MatrixXd allDegrees = ChebyTN(N, X);
+        const std::vector<double> allDegrees = ChebyTN(N, X);
         const std::vector<double> degreeNMinus1 = ChebyT(N - 1, X);
 
         bool same = true;
 
-        for (std::size_t i = 0; i < X.size(); ++i)
+        for (int i = 0; i < X.size(); ++i)
         {
             same = same &&
-                   approx(allDegrees(static_cast<Eigen::Index>(i),N - 1),
-                       degreeNMinus1[i],1.0e-12);
+                approx(at(allDegrees, i, N - 1, N),
+                    degreeNMinus1[i], 1.0e-12);
         }
 
         check(same, "ChebyT and ChebyTN agree");
@@ -1023,7 +1109,8 @@ int main()
 
         check(
             approx(xmin, 2.0, 1.0e-7) &&
-                approx(fmin, 3.0, 1.0e-14),"GSS: quadratic minimum");
+                approx(fmin, 3.0, 1.0e-14),
+            "GSS: quadratic minimum");
     }
 
     {
@@ -1036,7 +1123,8 @@ int main()
 
         check(
             approx(xmin, 0.0, 1.0e-7) &&
-                approx(fmin, 0.0, 1.0e-14),"GSS: symmetric minimum");
+                approx(fmin, 0.0, 1.0e-14),
+            "GSS: symmetric minimum");
     }
 
     {
@@ -1049,7 +1137,8 @@ int main()
 
         check(
             approx(xmin, std::numbers::pi, 1.0e-7) &&
-                approx(fmin, -1.0, 1.0e-14),"GSS: cosine minimum");
+                approx(fmin, -1.0, 1.0e-14),
+            "GSS: cosine minimum");
     }
 
     // ------------------------------------------------------------
@@ -1149,6 +1238,235 @@ int main()
         check(
             approx(root, 2.0945514815423265, 1.0e-13),
             "newtonR1D: cubic root");
+    }
+    // ------------------------------------------------------------
+    // newtonR2D
+    // ------------------------------------------------------------
+    {
+        // Linear system:
+        // t + s = 3
+        // t - s = 1
+        // Solution: (2,1)
+
+        const auto f1 = [](double t, double s)
+        {
+            return t + s - 3.0;
+        };
+
+        const auto f2 = [](double t, double s)
+        {
+            return t - s - 1.0;
+        };
+
+        const auto J = [](double, double)
+        {
+            return std::tuple<double, double, double, double>{
+                1.0, 1.0,
+                1.0, -1.0};
+        };
+
+        const auto [t, s] =
+            newtonR2D(f1, f2, J, 0.0, 0.0, 20);
+
+        check(
+            approx(t, 2.0, 1.0e-14) &&
+                approx(s, 1.0, 1.0e-14),
+            "newtonR2D: linear system");
+    }
+    {
+        // Circle and line:
+        // t^2 + s^2 = 2
+        // t = s
+        // Starting near the positive root gives (1,1).
+
+        const auto f1 = [](double t, double s)
+        {
+            return t * t + s * s - 2.0;
+        };
+
+        const auto f2 = [](double t, double s)
+        {
+            return t - s;
+        };
+
+        const auto J = [](double t, double s)
+        {
+            return std::tuple<double, double, double, double>{
+                2.0 * t, 2.0 * s,
+                1.0, -1.0};
+        };
+
+        const auto [t, s] =
+            newtonR2D(f1, f2, J, 0.8, 1.2, 30);
+
+        check(
+            approx(t, 1.0, 1.0e-13) &&
+                approx(s, 1.0, 1.0e-13),
+            "newtonR2D: nonlinear system");
+    }
+    {
+        // Another nonlinear system:
+        // t^2 - s = 0
+        // t + s - 2 = 0
+        //
+        // Positive solution:
+        // t = 1, s = 1.
+
+        const auto f1 = [](double t, double s)
+        {
+            return t * t - s;
+        };
+
+        const auto f2 = [](double t, double s)
+        {
+            return t + s - 2.0;
+        };
+
+        const auto J = [](double t, double)
+        {
+            return std::tuple<double, double, double, double>{
+                2.0 * t, -1.0,
+                1.0, 1.0};
+        };
+
+        const auto [t, s] =
+            newtonR2D(f1, f2, J, 0.7, 1.1, 30);
+
+        check(
+            approx(t, 1.0, 1.0e-13) &&
+                approx(s, 1.0, 1.0e-13),
+            "newtonR2D: parabola-line intersection");
+    }
+    {
+        const auto f1 = [](double t, double s)
+        {
+            return t + s;
+        };
+
+        const auto f2 = [](double t, double s)
+        {
+            return 2.0 * t + 2.0 * s;
+        };
+
+        const auto J = [](double, double)
+        {
+            return std::tuple<double, double, double, double>{
+                1.0, 1.0,
+                2.0, 2.0};
+        };
+
+        const auto [t, s] =
+            newtonR2D(f1, f2, J, 1.0, 1.0, 10);
+
+        check(
+            std::isnan(t) && std::isnan(s),
+            "newtonR2D: singular Jacobian returns NaN");
+    }
+    {
+        const auto f1 = [](double t, double)
+        {
+            return t * t - 2.0;
+        };
+
+        const auto f2 = [](double, double s)
+        {
+            return s * s - 3.0;
+        };
+
+        const auto J = [](double t, double s)
+        {
+            return std::tuple<double, double, double, double>{
+                2.0 * t, 0.0,
+                0.0, 2.0 * s};
+        };
+
+        // One iteration is not enough to converge from this start.
+        const auto [t, s] =
+            newtonR2D(f1, f2, J, 10.0, 10.0, 1);
+
+        check(
+            std::isnan(t) && std::isnan(s),
+            "newtonR2D: maximum iterations returns NaN");
+    }
+
+    // ------------------------------------------------------------
+    // fejer1w
+    // ------------------------------------------------------------
+    {
+        const std::vector<double> w = fejer1w(1);
+
+        check(w.size() == 1 && approx(w[0], 2.0), "fejer1w: n=1");
+    }
+
+    {
+        const std::vector<double> w = fejer1w(2);
+
+        check(w.size() == 2 && approx(w[0], 1.0) &&
+                  approx(w[1], 1.0),
+              "fejer1w: n=2");
+    }
+
+    {
+        const std::vector<double> w = fejer1w(3);
+
+        check(w.size() == 3 &&
+                  approx(w[0], 4.0 / 9.0, 1.0e-14) &&
+                  approx(w[1], 10.0 / 9.0, 1.0e-14) &&
+                  approx(w[2], 4.0 / 9.0, 1.0e-14),
+              "fejer1w: n=3");
+    }
+
+    {
+        const std::vector<double> w = fejer1w(12);
+
+        bool symmetric = true;
+
+        for (int i = 0; i < w.size(); ++i)
+        {
+            symmetric =
+                symmetric &&
+                approx(w[i], w[w.size() - 1U - i], 1.0e-14);
+        }
+
+        const double sum =
+            std::accumulate(w.begin(), w.end(), 0.0);
+
+        check(
+            symmetric && approx(sum, 2.0, 1.0e-14),
+            "fejer1w: symmetry and sum");
+    }
+
+    // ------------------------------------------------------------
+    // makeF1W and getF1W
+    // ------------------------------------------------------------
+    {
+        const std::filesystem::path file = "F1W_test.bin";
+
+        makeF1W(8, file);
+
+        bool correct = true;
+
+        for (int n = 1; n <= 8; ++n)
+        {
+            const std::vector<double> stored = getF1W(n, file);
+
+            const std::vector<double> expected = fejer1w(n);
+
+            if (stored.size() != expected.size())
+            {
+                correct = false;
+                break;
+            }
+
+            for (int i = 0; i < stored.size(); ++i)
+            {
+                correct = correct && approx(stored[i], expected[i], 1.0e-14);
+            }
+        }
+
+        check(correct, "makeF1W/getF1W: packed file round trip");
+
+        std::filesystem::remove(file);
     }
 
     std::cout << "\n";

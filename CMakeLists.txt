@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Eigen3 CONFIG REQUIRED)
+find_package(MKL CONFIG REQUIRED)
 
 add_executable(two_d_fl
     main.cpp
@@ -21,8 +21,8 @@ add_executable(subroutines_chk
 target_include_directories(two_d_fl PRIVATE include)
 target_include_directories(subroutines_chk PRIVATE include)
 
-target_link_libraries(two_d_fl PRIVATE Eigen3::Eigen)
-target_link_libraries(subroutines_chk PRIVATE Eigen3::Eigen)
+target_link_libraries(two_d_fl PRIVATE MKL::MKL)
+target_link_libraries(subroutines_chk PRIVATE MKL::MKL)
 
 if(MSVC)
     target_compile_options(two_d_fl PRIVATE /W4 /permissive-)
